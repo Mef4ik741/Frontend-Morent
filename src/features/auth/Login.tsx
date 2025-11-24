@@ -7,12 +7,29 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    const identifier = email.trim();
+    const plainPassword = password.trim();
+
+    if (!identifier || !plainPassword) {
+      setErrorMessage('Введите логин (email или username) и пароль.');
+      return;
+    }
 
     try {
-      const { data } = await api.post('/Auth/Login', { email, password });
+      const isEmail = identifier.includes('@');
+
+      const { data } = await api.post(
+        isEmail ? '/Auth/Login' : '/Auth/LoginByUsername',
+        isEmail
+          ? { email: identifier, password: plainPassword }
+          : { username: identifier, password: plainPassword }
+      );
 
       const payload: any = (data && (data as any).data) || data || {};
 
@@ -36,9 +53,17 @@ export const LoginPage: React.FC = () => {
       // Dispatch event so Navbar updates immediately
       window.dispatchEvent(new Event('storage'));
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Ошибка при входе. Проверьте email и пароль и попробуйте ещё раз.');
+      const backendMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message;
+
+      setErrorMessage(
+        backendMessage ||
+          'Ошибка при входе. Проверьте введённые данные и попробуйте ещё раз.'
+      );
     }
   };
 
@@ -58,13 +83,13 @@ export const LoginPage: React.FC = () => {
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email address
+              Email or Username
             </label>
             <div className="mt-1">
               <input
                 id="email"
                 name="email"
-                type="email"
+                type="text"
                 autoComplete="email"
                 required
                 value={email}
@@ -119,6 +144,10 @@ export const LoginPage: React.FC = () => {
               Log in
             </Button>
           </div>
+
+          {errorMessage && (
+            <p className="text-sm text-red-600 text-center">{errorMessage}</p>
+          )}
         </form>
 
         <div className="mt-6">

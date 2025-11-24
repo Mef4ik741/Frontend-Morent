@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || 'https://morent-backend-production.up.railway.app/api';
+
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -21,7 +24,7 @@ export const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5222/api/Account/Register', {
+      const response = await fetch(`${API_BASE_URL}/Account/Register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

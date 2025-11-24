@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const API_BASE_URL =
+    import.meta.env.VITE_API_URL || 'https://morent-backend-production.up.railway.app/api';
+
 export const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5222/api',
+    baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -30,9 +33,11 @@ const refreshAccessToken = async (): Promise<string | null> => {
         return null;
     }
 
-    refreshPromise = axios
-        .post('http://localhost:5222/api/Auth/refresh', { refreshToken })
-        .then((res) => {
+    const doRefresh = async (): Promise<string | null> => {
+        try {
+            const res = await axios.post(`${API_BASE_URL}/Auth/refresh`, {
+                refreshToken,
+            });
             const root: any = res.data || {};
             const data = root.data || root;
             const accessToken =
@@ -49,18 +54,23 @@ const refreshAccessToken = async (): Promise<string | null> => {
                 localStorage.setItem('refreshToken', newRefreshToken);
             }
             return accessToken || null;
-        })
-        .catch(() => {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('token');
+        } catch (error: any) {
+            const status = error?.response?.status;
+            // Только если сам refresh говорит, что токен невалидный, полностью разлогиниваем
+            if (status === 400 || status === 401 || status === 403) {
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('token');
+            }
             return null;
-        })
-        .finally(() => {
-            isRefreshing = false;
-            refreshPromise = null;
-        });
+        } 
+    };
 
+    refreshPromise = doRefresh();
+    refreshPromise.finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+    });
     return refreshPromise;
 };
 

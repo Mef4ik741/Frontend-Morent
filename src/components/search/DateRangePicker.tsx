@@ -4,40 +4,44 @@ import { ChevronLeft, ChevronRight, ChevronDown, Clock, Calendar as CalendarIcon
 interface DatePickerProps {
   label?: string;
   placeholder?: string;
-  value?: Date;
+  value?: Date | null;
   onChange?: (date: Date) => void;
-  minDate?: Date;
+  minDate?: Date | null;
   className?: string;
+  singleMonth?: boolean;
 }
 
-export const DatePicker: React.FC<DatePickerProps> = ({ 
-  label, 
-  placeholder = "Select date", 
-  value, 
+export const DatePicker: React.FC<DatePickerProps> = ({
+  label,
+  placeholder = "Add dates",
+  value,
   onChange,
   minDate,
-  className = ""
+  className = "",
+  singleMonth = false
 }) => {
   // State
-  const [date, setDate] = useState<Date>(value || new Date());
-  const [viewDate, setViewDate] = useState<Date>(value || new Date());
+  const [date, setDate] = useState<Date | null>(value || null);
+  const [viewDate, setViewDate] = useState<Date>(value || minDate || new Date());
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isTimeOpen, setIsTimeOpen] = useState(false);
-  
+
   // Refs for click outside
   const calendarRef = useRef<HTMLDivElement>(null);
   const timeRef = useRef<HTMLDivElement>(null);
 
   // Sync internal state with props
   useEffect(() => {
+    setDate(value || null);
     if (value) {
-      setDate(value);
-      // Only update viewDate if the calendar isn't open (to avoid jumping while browsing)
       if (!isCalendarOpen) {
         setViewDate(value);
       }
+    } else if (minDate && !isCalendarOpen) {
+      // If no value but minDate exists, start view there
+      setViewDate(minDate);
     }
-  }, [value, isCalendarOpen]);
+  }, [value, minDate, isCalendarOpen]);
 
   // Click Outside Handler
   useEffect(() => {
@@ -54,11 +58,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   }, []);
 
   // Helpers
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | null) => {
+    if (!date) return "Add time";
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | null) => {
+    if (!date) return placeholder;
     return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
   };
 
@@ -73,10 +79,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   // Selection Handlers
   const handleDateSelect = (newDate: Date) => {
-    // Preserve current time
-    newDate.setHours(date.getHours());
-    newDate.setMinutes(date.getMinutes());
-    
+    // Preserve current time if it exists, otherwise default to 10:00 AM
+    const currentHours = date ? date.getHours() : 10;
+    const currentMinutes = date ? date.getMinutes() : 0;
+
+    newDate.setHours(currentHours);
+    newDate.setMinutes(currentMinutes);
+
     setDate(newDate);
     // Don't close immediately, let user hit Save or see selection
     // setIsCalendarOpen(false); 
@@ -89,17 +98,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     if (modifier === 'PM' && hours < 12) hours += 12;
     if (modifier === 'AM' && hours === 12) hours = 0;
 
-    const newDate = new Date(date);
-    newDate.setHours(hours);
-    newDate.setMinutes(minutes);
-    
-    setDate(newDate);
+    // If date is null, use today's date
+    const baseDate = date ? new Date(date) : new Date();
+    baseDate.setHours(hours);
+    baseDate.setMinutes(minutes);
+
+    setDate(baseDate);
     setIsTimeOpen(false);
-    if (onChange) onChange(newDate);
+    if (onChange) onChange(baseDate);
   };
 
   const handleSave = () => {
-    if (onChange) onChange(date);
+    if (date && onChange) onChange(date);
     setIsCalendarOpen(false);
   };
 
@@ -129,17 +139,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     // Days
     for (let i = 1; i <= daysInMonth; i++) {
       const currentDate = new Date(year, month, i);
-      const isSelected = 
-        currentDate.getDate() === date.getDate() && 
-        currentDate.getMonth() === date.getMonth() && 
+      const isSelected = date &&
+        currentDate.getDate() === date.getDate() &&
+        currentDate.getMonth() === date.getMonth() &&
         currentDate.getFullYear() === date.getFullYear();
-      
-      const isToday = 
-        new Date().getDate() === i && 
-        new Date().getMonth() === month && 
+
+      const isToday =
+        new Date().getDate() === i &&
+        new Date().getMonth() === month &&
         new Date().getFullYear() === year;
 
-      const isDisabled = minDate ? currentDate < new Date(minDate.setHours(0,0,0,0)) : false;
+      // FIX: Create a copy of minDate to avoid mutation
+      const isDisabled = minDate ? currentDate < new Date(new Date(minDate).setHours(0, 0, 0, 0)) : false;
 
       days.push(
         <button
@@ -180,107 +191,110 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   return (
     <div className={`flex flex-col ${className}`}>
-      {label && <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">{label}</label>}
-      
+      {label && <label className="block text-[10px] font-bold text-gray-800 uppercase tracking-wider mb-0.5">{label}</label>}
+
       <div className="flex items-center gap-2">
         {/* Date Trigger */}
         <div className="relative" ref={calendarRef}>
           <button
             onClick={() => { setIsCalendarOpen(!isCalendarOpen); setIsTimeOpen(false); }}
             className={`
-              flex items-center justify-between gap-2 min-w-[140px] px-3 py-2.5 bg-transparent hover:bg-gray-100 rounded-xl transition-all duration-200 group
-              ${isCalendarOpen ? 'bg-gray-100 text-brand-600' : ''}
+              flex items-center justify-between gap-2 min-w-[100px] py-1 bg-transparent hover:bg-gray-50 rounded-lg transition-all duration-200 group
+              ${isCalendarOpen ? 'text-brand-600' : ''}
             `}
           >
-            <span className={`text-sm font-bold truncate ${isCalendarOpen ? 'text-brand-600' : 'text-gray-900'}`}>
+            <span className={`text-sm truncate ${!date ? 'text-gray-400 font-normal' : 'text-gray-900 font-bold'} ${isCalendarOpen ? 'text-brand-600' : ''}`}>
               {formatDate(date)}
             </span>
-            <ChevronDown size={16} className={`text-gray-400 transition-transform ${isCalendarOpen ? 'rotate-180 text-brand-600' : 'group-hover:text-gray-600'}`} />
+            <ChevronDown size={14} className={`text-gray-400 transition-transform ${isCalendarOpen ? 'rotate-180 text-brand-600' : 'group-hover:text-gray-600'}`} />
           </button>
 
-          {/* Dual Calendar Dropdown */}
+          {/* Calendar Dropdown */}
           {isCalendarOpen && (
-            <div className="absolute top-full left-0 md:-left-12 mt-3 p-5 bg-white rounded-3xl shadow-xl shadow-gray-900/10 border border-gray-100 z-[100] w-[340px] md:w-[680px] animate-fade-in">
-              {/* Header Tabs */}
+            <div className={`
+              absolute top-full left-0 mt-3 p-5 bg-white rounded-3xl shadow-xl shadow-gray-900/10 border border-gray-100 z-[100] animate-fade-in
+              ${singleMonth ? 'w-[340px]' : 'w-[340px] md:w-[680px] md:-left-12'}
+            `}>
+              {/* Header - only Dates (Months removed) */}
               <div className="flex justify-center mb-6">
-                 <div className="bg-gray-100 p-1 rounded-xl inline-flex">
-                    <button className="px-6 py-1.5 bg-white shadow-sm rounded-lg text-sm font-bold text-gray-900">Dates</button>
-                    <button className="px-6 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-900">Months</button>
-                 </div>
+                <div className="bg-gray-100 p-1 rounded-xl inline-flex">
+                  <button className="px-6 py-1.5 bg-white shadow-sm rounded-lg text-sm font-bold text-gray-900">
+                    Dates
+                  </button>
+                </div>
               </div>
 
               {/* Navigation & Calendars */}
               <div className="flex items-start justify-between gap-8 relative">
-                 {/* Nav Buttons */}
-                 <button onClick={() => changeMonth(-1)} className="absolute left-2 top-2 p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors z-10">
-                    <ChevronLeft size={20} />
-                 </button>
-                 <button onClick={() => changeMonth(1)} className="absolute right-2 top-2 p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors z-10">
-                    <ChevronRight size={20} />
-                 </button>
+                {/* Nav Buttons */}
+                <button onClick={() => changeMonth(-1)} className="absolute left-2 top-2 p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors z-10">
+                  <ChevronLeft size={20} />
+                </button>
+                <button onClick={() => changeMonth(1)} className="absolute right-2 top-2 p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors z-10">
+                  <ChevronRight size={20} />
+                </button>
 
-                 {/* Dual Month View */}
-                 <div className="flex flex-col md:flex-row gap-8 w-full">
-                    {renderMonth(viewDate)}
+                {/* Month View */}
+                <div className="flex flex-col md:flex-row gap-8 w-full justify-center">
+                  {renderMonth(viewDate)}
+                  {!singleMonth && (
                     <div className="hidden md:block">
-                       {renderMonth(nextMonthDate)}
+                      {renderMonth(nextMonthDate)}
                     </div>
-                 </div>
+                  )}
+                </div>
               </div>
 
               {/* Footer */}
               <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
-                 <div className="text-sm">
-                    <span className="text-gray-400">Selected: </span>
-                    <span className="font-bold text-gray-900">{formatDate(date)}</span>
-                 </div>
-                 <div className="flex gap-3">
-                    <button onClick={() => setIsCalendarOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">
-                       Reset
-                    </button>
-                    <button onClick={handleSave} className="px-6 py-2 text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-lg shadow-brand-200 transition-all">
-                       Save
-                    </button>
-                 </div>
+                <div className="text-sm">
+                  <span className="text-gray-400">Selected: </span>
+                  <span className="font-bold text-gray-900">{formatDate(date)}</span>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setIsCalendarOpen(false)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">
+                    Reset
+                  </button>
+                  <button onClick={handleSave} className="px-6 py-2 text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-lg shadow-brand-200 transition-all">
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Separator */}
-        <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
-
         {/* Time Trigger */}
         <div className="relative" ref={timeRef}>
           <button
-             onClick={() => { setIsTimeOpen(!isTimeOpen); setIsCalendarOpen(false); }}
-             className={`
-                flex items-center justify-between gap-2 min-w-[110px] px-3 py-2.5 bg-transparent hover:bg-gray-100 rounded-xl transition-all duration-200 group
-                ${isTimeOpen ? 'bg-gray-100 text-brand-600' : ''}
+            onClick={() => { setIsTimeOpen(!isTimeOpen); setIsCalendarOpen(false); }}
+            className={`
+                flex items-center justify-between gap-2 min-w-[80px] py-1 bg-transparent hover:bg-gray-50 rounded-lg transition-all duration-200 group
+                ${isTimeOpen ? 'text-brand-600' : ''}
              `}
           >
-             <span className={`text-sm font-bold ${isTimeOpen ? 'text-brand-600' : 'text-gray-900'}`}>
-                {formatTime(date)}
-             </span>
-             <ChevronDown size={16} className={`text-gray-400 transition-transform ${isTimeOpen ? 'rotate-180 text-brand-600' : 'group-hover:text-gray-600'}`} />
+            <span className={`text-sm truncate ${!date ? 'text-gray-400 font-normal' : 'text-gray-900 font-bold'} ${isTimeOpen ? 'text-brand-600' : ''}`}>
+              {formatTime(date)}
+            </span>
+            <ChevronDown size={14} className={`text-gray-400 transition-transform ${isTimeOpen ? 'rotate-180 text-brand-600' : 'group-hover:text-gray-600'}`} />
           </button>
 
           {/* Time Dropdown */}
           {isTimeOpen && (
-             <div className="absolute top-full left-0 mt-2 w-48 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 z-[100] py-2 no-scrollbar animate-fade-in">
-                {timeOptions.map((time) => (
-                   <button
-                      key={time}
-                      onClick={() => handleTimeSelect(time)}
-                      className={`
+            <div className="absolute top-full left-0 mt-2 w-48 max-h-64 overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 z-[100] py-2 no-scrollbar animate-fade-in">
+              {timeOptions.map((time) => (
+                <button
+                  key={time}
+                  onClick={() => handleTimeSelect(time)}
+                  className={`
                          w-full text-left px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors
                          ${formatTime(date) === time ? 'text-brand-600 bg-brand-50' : 'text-gray-700'}
                       `}
-                   >
-                      {time}
-                   </button>
-                ))}
-             </div>
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>

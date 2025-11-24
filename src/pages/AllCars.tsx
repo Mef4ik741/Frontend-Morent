@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import FilterPills from '../components/search/FilterPills';
 import AllFiltersModal, { FiltersState } from '../components/search/AllFiltersModal';
 import { api } from '../lib/api/axiosConfig';
 import { Heart, Users, Fuel, Gauge } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 interface SearchedCar {
   id: string;
@@ -21,54 +20,59 @@ interface SearchedCar {
 }
 
 interface BackendCar {
-	id: string;
-	name: string;
-	brand: string;
-	model: string;
-	year: number;
-	price: number;
-	description: string;
-	location: string;
-	isAvailable: boolean;
-	imageUrl: string;
-	ownerUserId: string;
-	images: {
-		id: string;
-		url: string;
-		isPrimary: boolean;
-		sortOrder: number;
-	}[];
-}
-
-interface CarsSearchedResponse {
   id: string;
-  imageCar: string;
   name: string;
-  ownerUsername: string | null;
-  location: string;
+  brand: string;
+  model: string;
+  year: number;
   price: number;
+  description: string;
+  location: string;
+  isAvailable: boolean;
+  imageUrl: string;
+  ownerUserId: string;
+  images: {
+    id: string;
+    url: string;
+    isPrimary: boolean;
+    sortOrder: number;
+  }[];
 }
 
-export const SearchPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+export const AllCarsPage: React.FC = () => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [cars, setCars] = useState<SearchedCar[]>([]);
+  const [allBackendCars, setAllBackendCars] = useState<BackendCar[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [isToggling, setIsToggling] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FiltersState>({
-		brand: '',
-		year: '',
-		availableOnly: false,
-		minPrice: '',
-		maxPrice: '',
-	});
+    brand: '',
+    year: '',
+    availableOnly: false,
+    minPrice: '',
+    maxPrice: '',
+  });
 
-  const location = searchParams.get('location') || '';
+  const mapBackendCarToSearched = (car: BackendCar): SearchedCar => {
+    const primaryImage = car.images?.find((img) => img.isPrimary) || car.images?.[0];
+    return {
+      id: car.id,
+      imageCar: primaryImage?.url || car.imageUrl,
+      name: car.name || `${car.brand} ${car.model}`,
+      ownerUsername: '',
+      location: car.location,
+      fuelType: 'Gas',
+      transmission: 'Automatic',
+      seats: 4,
+      pricePerDay: car.price,
+      hostImage: '',
+      hostName: '',
+    };
+  };
 
-  // Load current user for favorites
   useEffect(() => {
     const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
     if (!token) {
@@ -82,7 +86,7 @@ export const SearchPage: React.FC = () => {
         const profile: any = data || {};
         setUserId(profile.id as string);
       } catch (e) {
-        console.error('Failed to load user for favorites (search page)', e);
+        console.error('Failed to load user for favorites (all cars page)', e);
         setUserId(null);
       }
     };
@@ -91,36 +95,16 @@ export const SearchPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!location.trim()) {
-      setCars([]);
-      return;
-    }
-
-    const fetchCars = async () => {
+    const fetchAllCars = async () => {
       try {
         setLoading(true);
         setError(null);
-        const { data } = await api.get<CarsSearchedResponse[]>('/Car/CarsSearched', {
-          params: { name: location.trim(), page: 1, pageSize: 15 },
-        });
+        const { data } = await api.get<BackendCar[]>('/Car/all');
         const list = Array.isArray(data) ? data : [];
-        setCars(
-          list.map((item) => ({
-            id: item.id,
-            imageCar: item.imageCar,
-            name: item.name,
-            ownerUsername: item.ownerUsername || '',
-            location: item.location,
-            fuelType: 'Gas',
-            transmission: 'Automatic',
-            seats: 4,
-            pricePerDay: item.price,
-            hostImage: '',
-            hostName: item.ownerUsername || '',
-          }))
-        );
+        setAllBackendCars(list);
+        setCars(list.map(mapBackendCarToSearched));
       } catch (err) {
-        console.error(err);
+        console.error('Failed to load all cars', err);
         setError('Не удалось загрузить автомобили');
         setCars([]);
       } finally {
@@ -128,96 +112,53 @@ export const SearchPage: React.FC = () => {
       }
     };
 
-    fetchCars();
-  }, [location]);
+    fetchAllCars();
+  }, []);
 
-  function mapBackendCarToSearched(car: BackendCar): SearchedCar {
-		const primaryImage = car.images?.find((img) => img.isPrimary) || car.images?.[0];
-		return {
-			id: car.id,
-			imageCar: primaryImage?.url || car.imageUrl,
-			name: car.name || `${car.brand} ${car.model}`,
-			ownerUsername: '',
-			location: car.location,
-			fuelType: 'Gas',
-			transmission: 'Automatic',
-			seats: 4,
-			pricePerDay: car.price,
-			hostImage: '',
-			hostName: '',
-		};
-	}
+  const handleApplyFilters = (nextFilters: FiltersState) => {
+    setFilters(nextFilters);
 
-	const handleApplyFilters = async (nextFilters: FiltersState) => {
-		setFilters(nextFilters);
+    if (!allBackendCars.length) {
+      setCars([]);
+      return;
+    }
 
-		// если фильтры пустые – просто перезагружаем поиск по location
-		const hasBrand = !!nextFilters.brand.trim();
-		const hasYear = !!nextFilters.year.trim();
-		const hasPrice = !!nextFilters.minPrice.trim() || !!nextFilters.maxPrice.trim();
-		const onlyAvailable = nextFilters.availableOnly;
+    const hasBrand = !!nextFilters.brand.trim();
+    const hasYear = !!nextFilters.year.trim();
+    const hasPrice = !!nextFilters.minPrice.trim() || !!nextFilters.maxPrice.trim();
+    const onlyAvailable = nextFilters.availableOnly;
 
-		if (!hasBrand && !hasYear && !hasPrice && !onlyAvailable) {
-			if (location) {
-				// триггерим useEffect
-				setCars([]);
-			}
-			return;
-		}
+    let data = [...allBackendCars];
 
-		try {
-			setLoading(true);
-			setError(null);
+    if (hasBrand) {
+      const brand = nextFilters.brand.trim().toLowerCase();
+      data = data.filter(
+        (c) =>
+          c.brand.toLowerCase().includes(brand) ||
+          c.name.toLowerCase().includes(brand) ||
+          c.model.toLowerCase().includes(brand)
+      );
+    }
 
-			let data: BackendCar[] = [];
-			if (hasBrand) {
-				const { data: res } = await api.get<BackendCar[]>(`/Car/brand/${encodeURIComponent(nextFilters.brand.trim())}`);
-				data = Array.isArray(res) ? res : [];
-			} else if (hasYear) {
-				const yearNum = parseInt(nextFilters.year.trim(), 10);
-				if (!Number.isNaN(yearNum)) {
-					const { data: res } = await api.get<BackendCar[]>(`/Car/year/${yearNum}`);
-					data = Array.isArray(res) ? res : [];
-				}
-			} else if (onlyAvailable) {
-				const { data: res } = await api.get<BackendCar[]>('/Car/available');
-				data = Array.isArray(res) ? res : [];
-			} else if (hasPrice) {
-				const params: any = {};
-				if (nextFilters.minPrice.trim()) params.minPrice = Number(nextFilters.minPrice);
-				if (nextFilters.maxPrice.trim()) params.maxPrice = Number(nextFilters.maxPrice);
-				const { data: res } = await api.get<BackendCar[]>('/Car/price', { params });
-				data = Array.isArray(res) ? res : [];
-			}
+    if (hasYear) {
+      const yearNum = parseInt(nextFilters.year.trim(), 10);
+      if (!Number.isNaN(yearNum)) {
+        data = data.filter((c) => c.year === yearNum);
+      }
+    }
 
-			// дополнительные фильтры по цене и доступности на фронте
-			if (hasPrice && !data.length && (hasBrand || hasYear || onlyAvailable)) {
-				// если основной эндпоинт не вызывался с ценой, берём доступные и фильтруем
-				if (!data.length) {
-					const { data: res } = await api.get<BackendCar[]>('/Car/available');
-					data = Array.isArray(res) ? res : [];
-				}
-			}
+    if (hasPrice) {
+      const min = nextFilters.minPrice.trim() ? Number(nextFilters.minPrice) : 0;
+      const max = nextFilters.maxPrice.trim() ? Number(nextFilters.maxPrice) : Number.MAX_SAFE_INTEGER;
+      data = data.filter((c) => c.price >= min && c.price <= max);
+    }
 
-			if (hasPrice) {
-				const min = nextFilters.minPrice.trim() ? Number(nextFilters.minPrice) : 0;
-				const max = nextFilters.maxPrice.trim() ? Number(nextFilters.maxPrice) : Number.MAX_SAFE_INTEGER;
-				data = data.filter((c) => c.price >= min && c.price <= max);
-			}
+    if (onlyAvailable) {
+      data = data.filter((c) => c.isAvailable);
+    }
 
-			if (onlyAvailable) {
-				data = data.filter((c) => c.isAvailable);
-			}
-
-			setCars(data.map(mapBackendCarToSearched));
-		} catch (err) {
-			console.error('Failed to apply filters', err);
-			setError('Не удалось применить фильтры');
-			setCars([]);
-		} finally {
-			setLoading(false);
-		}
-	};
+    setCars(data.map(mapBackendCarToSearched));
+  };
 
   const toggleFavorite = async (carId: string) => {
     if (!userId || isToggling) return;
@@ -239,7 +180,7 @@ export const SearchPage: React.FC = () => {
         setFavoriteIds((prev) => prev.filter((id) => id !== carId));
       }
     } catch (err) {
-      console.error('Failed to toggle favorite (search page)', err);
+      console.error('Failed to toggle favorite (all cars page)', err);
     } finally {
       setIsToggling(false);
     }
@@ -248,9 +189,7 @@ export const SearchPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6 flex flex-col gap-4">
-        <h1 className="text-2xl font-bold">
-          Search results{location ? ` for "${location}"` : ''}
-        </h1>
+        <h1 className="text-2xl font-bold">All cars</h1>
         <FilterPills onOpenAllFilters={() => setIsFiltersOpen(true)} />
       </div>
 
@@ -262,11 +201,9 @@ export const SearchPage: React.FC = () => {
       />
 
       {loading && <p className="text-gray-500">Loading cars...</p>}
-      {error && !loading && (
-        <p className="text-red-500 text-sm mb-4">{error}</p>
-      )}
+      {error && !loading && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-      {!loading && !error && cars.length === 0 && location.trim() && (
+      {!loading && !error && cars.length === 0 && (
         <p className="text-gray-500 text-sm">No cars found.</p>
       )}
 
