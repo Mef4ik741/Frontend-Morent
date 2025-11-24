@@ -51,7 +51,12 @@ export const ThematicSections: React.FC = () => {
         setError(null);
 
         const requests = LOCATION_CONFIG.map((loc) =>
-          api.get<LocationCarResponse[]>(`/Car/location/${loc.key}`)
+          api.get<LocationCarResponse[]>(`/Car/location/${loc.key}`, {
+            params: {
+              page: 1,
+              pageSize: 15,
+            },
+          })
         );
         const responses = await Promise.all(requests);
 

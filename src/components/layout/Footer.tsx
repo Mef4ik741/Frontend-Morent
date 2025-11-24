@@ -1,4 +1,5 @@
 import React from 'react';
+import logo from '../../assets/logo.png';
 
 export const Footer: React.FC = () => {
   return (
@@ -6,12 +7,12 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div className="space-y-6">
-            <span className="text-3xl font-bold text-brand-600">MORENT</span>
+            <img src={logo} alt="Morent" className="h-20 w-auto mb-4" />
             <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
               Our vision is to provide convenience and help increase your sales business.
             </p>
           </div>
-          
+
           <div>
             <h4 className="font-bold text-xl mb-6 text-gray-900">About</h4>
             <ul className="space-y-4 text-gray-500 text-sm">

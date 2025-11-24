@@ -4,9 +4,10 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { HomePage } from './pages/Home';
 import { SearchPage } from './pages/Cars';
+import { AllCarsPage } from './pages/AllCars';
 import { FavoritesPage } from './pages/Favorites';
 import { CarDetailsPage } from './pages/CarDetail';
-import { AiAssistant } from './components/ui/AiAssistant';
+
 import { LoginPage } from './features/auth/Login';
 import { RegisterPage } from './features/auth/Register';
 import { ProfilePage } from './pages/Profile';
@@ -26,6 +27,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/cars" element={<AllCarsPage />} />
             <Route path="/car/:id" element={<CarDetailsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -41,7 +43,6 @@ const App: React.FC = () => {
           </Routes>
         </main>
         <Footer />
-        <AiAssistant />
       </div>
     </Router>
   );

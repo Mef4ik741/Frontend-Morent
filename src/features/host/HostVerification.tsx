@@ -89,15 +89,24 @@ export const HostVerification: React.FC = () => {
     let isValid = true;
 
     if (step === 1) {
-      if (!formData.personalInfo.fullName) newErrors.fullName = 'Full name is required';
-      if (!formData.personalInfo.phone) newErrors.phone = 'Phone number is required';
-      if (!formData.personalInfo.dob) newErrors.dob = 'Date of birth is required';
-    }
+      const fullName = formData.personalInfo.fullName.trim();
+      const phone = formData.personalInfo.phone.trim();
 
-    if (step === 2) {
-      if (!formData.documents.passportNumber) newErrors.passportNumber = 'Document number required';
-      if (!formData.documents.passportUrl) newErrors.passportUrl = 'Passport/ID upload required';
-      if (!formData.documents.licenseUrl) newErrors.licenseUrl = 'License upload required';
+      if (!fullName) {
+        newErrors.fullName = 'Full name is required';
+      }
+
+      // Azerbaijani phone number: +994 XX XXX XX XX where XX is one of 55, 70, 51, 99, 77
+      const azPhoneRegex = /^\+994\s?(55|70|51|99|77)\s?\d{3}\s?\d{2}\s?\d{2}$/;
+      if (!phone) {
+        newErrors.phone = 'Phone number is required';
+      } else if (!azPhoneRegex.test(phone)) {
+        newErrors.phone = 'Enter a valid Azerbaijani number (+994 XX XXX XX XX)';
+      }
+
+      if (!formData.personalInfo.dob) {
+        newErrors.dob = 'Date of birth is required';
+      }
     }
 
     if (step === 3) {
@@ -240,7 +249,7 @@ export const HostVerification: React.FC = () => {
                 <div className="md:col-span-2">
                   {renderInput("Full Name", formData.personalInfo.fullName, "personalInfo", "fullName", "text", "Elvin Mammadov")}
                 </div>
-                {renderInput("Phone Number", formData.personalInfo.phone, "personalInfo", "phone", "tel", "+994 50 123 45 67")}
+                {renderInput("Phone Number", formData.personalInfo.phone, "personalInfo", "phone", "tel", "+994 55 123 45 67")}
                 {renderInput("Date of Birth", formData.personalInfo.dob, "personalInfo", "dob", "date")}
               </div>
             </div>

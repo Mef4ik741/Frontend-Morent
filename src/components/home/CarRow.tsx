@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Car } from '../../types';
@@ -12,19 +12,48 @@ interface CarRowProps {
 
 export const CarRow: React.FC<CarRowProps> = ({ title, cars, link }) => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const updateScrollButtons = () => {
+            const { scrollLeft, scrollWidth, clientWidth } = container;
+            const maxScrollLeft = scrollWidth - clientWidth;
+            setCanScrollLeft(scrollLeft > 8);
+            setCanScrollRight(scrollLeft < maxScrollLeft - 8);
+        };
+
+        updateScrollButtons();
+
+        container.addEventListener('scroll', updateScrollButtons);
+        window.addEventListener('resize', updateScrollButtons);
+
+        return () => {
+            container.removeEventListener('scroll', updateScrollButtons);
+            window.removeEventListener('resize', updateScrollButtons);
+        };
+    }, [cars.length]);
 
     const scroll = (direction: 'left' | 'right') => {
-        if (scrollContainerRef.current) {
-            const scrollAmount = 280;
-            const newScrollLeft = direction === 'left'
-                ? scrollContainerRef.current.scrollLeft - scrollAmount
-                : scrollContainerRef.current.scrollLeft + scrollAmount;
+        const container = scrollContainerRef.current;
+        if (!container) return;
 
-            scrollContainerRef.current.scrollTo({
-                left: newScrollLeft,
-                behavior: 'smooth'
-            });
-        }
+        const scrollAmount = 280;
+        const maxScrollLeft = container.scrollWidth - container.clientWidth;
+        let newScrollLeft = direction === 'left'
+            ? container.scrollLeft - scrollAmount
+            : container.scrollLeft + scrollAmount;
+
+        if (newScrollLeft < 0) newScrollLeft = 0;
+        if (newScrollLeft > maxScrollLeft) newScrollLeft = maxScrollLeft;
+
+        container.scrollTo({
+            left: newScrollLeft,
+            behavior: 'smooth'
+        });
     };
 
     return (
@@ -46,14 +75,24 @@ export const CarRow: React.FC<CarRowProps> = ({ title, cars, link }) => {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => scroll('left')}
-                        className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
+                        disabled={!canScrollLeft}
+                        className={`p-2 rounded-full border transition-colors ${
+                            canScrollLeft
+                                ? 'border-gray-300 bg-white hover:bg-gray-100'
+                                : 'border-gray-200 bg-gray-100/60 opacity-50 cursor-not-allowed'
+                        }`}
                         aria-label="Scroll left"
                     >
                         <ChevronLeft size={20} className="text-gray-600" />
                     </button>
                     <button
                         onClick={() => scroll('right')}
-                        className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
+                        disabled={!canScrollRight}
+                        className={`p-2 rounded-full border transition-colors ${
+                            canScrollRight
+                                ? 'border-gray-300 bg-white hover:bg-gray-100'
+                                : 'border-gray-200 bg-gray-100/60 opacity-50 cursor-not-allowed'
+                        }`}
                         aria-label="Scroll right"
                     >
                         <ChevronRight size={20} className="text-gray-600" />
@@ -63,7 +102,7 @@ export const CarRow: React.FC<CarRowProps> = ({ title, cars, link }) => {
 
             <div
                 ref={scrollContainerRef}
-                className="flex overflow-x-auto gap-4 px-4 sm:px-6 lg:px-8 pb-2 snap-x snap-mandatory scrollbar-hide"
+                className="flex overflow-x-auto gap-4 px-4 sm:px-6 lg:px-8 pb-2 snap-x snap-mandatory scrollbar-hide scroll-smooth"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
                 {cars.map((car) => (

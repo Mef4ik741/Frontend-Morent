@@ -149,6 +149,7 @@ export const ProfilePage: React.FC = () => {
       const { data } = await api.get<Profile>('/Account/profile');
       setProfile(data);
       setAvatarSuccess('Avatar has been updated.');
+      window.dispatchEvent(new Event('profile-updated'));
       setAvatarFile(null);
     } catch (err) {
       console.error('Failed to upload avatar', err);

@@ -14,8 +14,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ className = "", compact = 
     const [isSearching, setIsSearching] = useState(false);
     const [results, setResults] = useState<any[] | null>(null);
     const navigate = useNavigate();
-    const [startDate, setStartDate] = useState<Date>(new Date());
-    const [endDate, setEndDate] = useState<Date>(new Date(new Date().setDate(new Date().getDate() + 3)));
+
+    // Initialize with null to show "Add dates" / "Add time" placeholders
+    const [startDate, setStartDate] = useState<Date | null>(null);
+    const [endDate, setEndDate] = useState<Date | null>(null);
 
     const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -42,10 +44,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({ className = "", compact = 
     };
 
     return (
-        <div className={`bg-white rounded-2xl shadow-lg border border-gray-200 flex flex-col lg:flex-row items-center relative ${compact ? 'p-1' : 'p-2'} ${className}`}>
+        <div className={`bg-white rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.1)] border border-gray-200 flex flex-col lg:flex-row items-center relative ${compact ? 'p-1' : 'p-2'} ${className}`}>
 
             {/* Location Input */}
-            <div className={`w-full lg:flex-[1.5] relative px-4 ${compact ? 'py-1' : 'py-2'}`}>
+            <div className={`w-full lg:flex-[1.5] relative px-6 ${compact ? 'py-1' : 'py-2'}`}>
                 <label className="block text-[10px] font-bold text-gray-800 uppercase tracking-wider mb-0.5">Where</label>
                 <input
                     type="text"
@@ -57,43 +59,43 @@ export const SearchBar: React.FC<SearchBarProps> = ({ className = "", compact = 
             </div>
 
             {/* Divider */}
-            <div className="hidden lg:block w-px h-8 bg-gray-200 mx-2"></div>
+            <div className="hidden lg:block w-px h-8 bg-gray-200"></div>
 
             {/* From Date */}
-            <div className={`w-full lg:flex-1 px-4 border-t lg:border-t-0 border-gray-100 pt-2 lg:pt-0 ${compact ? 'py-1' : 'py-2'}`}>
+            <div className={`w-full lg:flex-1 px-6 border-t lg:border-t-0 border-gray-100 pt-2 lg:pt-0 ${compact ? 'py-1' : 'py-2'}`}>
                 <DatePicker
                     label="From"
                     placeholder="Add dates"
                     value={startDate}
-                    onChange={setStartDate}
+                    onChange={(date) => setStartDate(date)}
                     className="w-full"
                 />
             </div>
 
             {/* Divider */}
-            <div className="hidden lg:block w-px h-8 bg-gray-200 mx-2"></div>
+            <div className="hidden lg:block w-px h-8 bg-gray-200"></div>
 
             {/* Until Date */}
-            <div className={`w-full lg:flex-1 px-4 border-t lg:border-t-0 border-gray-100 pt-2 lg:pt-0 ${compact ? 'py-1' : 'py-2'}`}>
+            <div className={`w-full lg:flex-1 px-6 border-t lg:border-t-0 border-gray-100 pt-2 lg:pt-0 ${compact ? 'py-1' : 'py-2'}`}>
                 <DatePicker
                     label="Until"
                     placeholder="Add dates"
                     value={endDate}
-                    onChange={setEndDate}
+                    onChange={(date) => setEndDate(date)}
                     minDate={startDate}
                     className="w-full"
                 />
             </div>
 
             {/* Search Button */}
-            <div className="w-full lg:w-auto mt-2 lg:mt-0 lg:ml-2">
+            <div className="w-full lg:w-auto mt-2 lg:mt-0 lg:ml-2 pr-2">
                 <button
                     type="button"
                     onClick={handleSearch}
                     disabled={isSearching}
-                    className={`bg-brand-600 hover:bg-brand-700 disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-all shadow-lg hover:shadow-brand-500/25 ${compact ? 'h-9 w-9' : 'h-12 w-full lg:w-12'}`}
+                    className={`bg-brand-600 hover:bg-brand-700 disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition-all shadow-lg hover:shadow-brand-500/25 ${compact ? 'h-10 w-10' : 'h-12 w-full lg:w-12'}`}
                 >
-                    <Search size={compact ? 18 : 24} strokeWidth={2.5} />
+                    <Search size={compact ? 18 : 20} strokeWidth={2.5} />
                 </button>
             </div>
         </div>
